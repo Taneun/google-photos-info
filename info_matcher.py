@@ -9,9 +9,9 @@ from PIL.ExifTags import TAGS
 # Step 1: Authenticate with Google Photos API
 def authenticate_google_photos():
     SCOPES = ['https://www.googleapis.com/auth/photoslibrary.readonly']
-    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+    flow = InstalledAppFlow.from_client_secrets_file('my_credentials.json', SCOPES)
     creds = flow.run_local_server(port=0)
-    return build('photoslibrary', 'v1', credentials=creds)
+    return build('photoslibrary', 'v1', credentials=creds, static_discovery=False)
 
 
 # Step 2: Fetch photo metadata from Google Photos album
@@ -36,41 +36,53 @@ def fetch_google_photos_metadata(service, album_name):
 
 
 # Step 3: Extract metadata from local photos
-def extract_metadata(file_path):
-    with Image.open(file_path) as img:
-        exif_data = img._getexif()
-        if exif_data:
-            return {TAGS.get(tag): value for tag, value in exif_data.items()}
-        return None
+# def extract_metadata(file_path):
+#     with Image.open(file_path) as img:
+#         exif_data = img.getexif()
+#         if exif_data:
+#             return {TAGS.get(tag): value for tag, value in exif_data.items()}
+#         return None
 
 
 # Step 4: Match photos
 def match_photos(google_photos, local_photos):
-    matches = []
+    total = len(local_photos)
+    matching = 0
+    no_matching = 0
+    no_match_list = []
+    print(f"Matching {total} photos...")
     for photo in local_photos:
-        metadata = extract_metadata(photo)
-        if not metadata:
-            continue
         filename = os.path.basename(photo)
         match = next((gp for gp in google_photos if gp['filename'] == filename), None)
         if match:
-            matches.append((photo, match))
-    return matches
+            true_date = match['mediaMetadata']['creationTime']
+            if true_date:
+                os.utime(photo, (true_date, true_date)) # todo: change to use PIL
+                matching += 1
+                continue
+        no_matching += 1
+        no_match_list.append(photo)
+    print(f"Matched {matching}/{total} photos.")
+    print(f"Failed to match {no_matching}/{total} photos.")
+    print("No match list:")
+    for no_photo in no_match_list:
+        print(no_photo)
+
 
 
 # Main Function
 def main():
-    album_name = "Your Album Name"
-    local_photo_dir = "path/to/local/photos"
+    album_name = "to download"
+    local_photo_dir = "/Users/talneumann/Downloads/downloaded_album"
 
     service = authenticate_google_photos()
     google_photos = fetch_google_photos_metadata(service, album_name)
 
     local_photos = [os.path.join(local_photo_dir, f) for f in os.listdir(local_photo_dir)]
-    matches = match_photos(google_photos, local_photos)
+    match_photos(google_photos, local_photos)
 
-    for local, google in matches:
-        print(f"Matched: {local} -> {google['filename']}")
+    # for local, google in matches:
+    #     print(f"Matched: {local} -> {google['filename']}")
 
 
 if __name__ == "__main__":
