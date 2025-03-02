@@ -184,11 +184,22 @@ def move_unmatched_photos(photo_paths, destination_folder):
         except Exception as e:
             print(f"Failed to move {photo}: {e}")
 
+# Utility Function
+def read_photo_paths(file_path):
+    """
+    Reads a text file containing photo paths and returns them as a list.
+
+    :param file_path: Path to the text file.
+    :return: List of photo paths.
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]  # Remove empty lines
+
 # Main Function
 def main():
     album_name = "to download"
-    local_photo_dir = "/Users/talneumann/Downloads/downloaded_album"
-    no_match_folder = "/Users/talneumann/Downloads/downloaded_no_match"
+    local_photo_dir = ".../downloaded_album"
+    no_match_folder = ".../downloaded_no_match"
     if not os.path.exists('photos_metadata.json'):
         service = authenticate_google_photos()
         google_photos = fetch_google_photos_metadata(service, album_name, save_to_file=True)
